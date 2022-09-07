@@ -32,7 +32,7 @@ jobs:
     - uses: actions/upload-artifact@v3
       with:
         name: windows-amd64
-        path: GlacyteSetup.exe
+        path: GlacyteSetup64.exe
         if-no-files-found: error
     - uses: actions/upload-artifact@v3
       with:
