@@ -29,7 +29,7 @@
 
 	<groupId>net.runelite</groupId>
 	<artifactId>launcher</artifactId>
-	<version>2.4.6-SNAPSHOT</version>
+	<version>1.0</version>
 	<name>Glacyte Launcher</name>
 	<description>Launcher for Glacyte client</description>
 
@@ -41,9 +41,9 @@
 	</properties>
 
 	<scm>
-		<url>https://github.com/runelite/launcher</url>
-		<connection>scm:git:git://github.com/runelite/launcher</connection>
-		<developerConnection>scm:git:git@github.com:runelite/launcher</developerConnection>
+		<url>https://github.com/dewiwalker/Glacyte-Launcher</url>
+		<connection>scm:git:git://github.com/dewiwalker/Glacyte-Launcher</connection>
+		<developerConnection>scm:git:git@github.com:dewiwalker/Glacyte-Launcher</developerConnection>
 		<tag>HEAD</tag>
 	</scm>
 
