@@ -56,6 +56,9 @@ jobs:
       with:
         java-version: 11
         distribution: temurin
+    - name: 🗃️ Adding Permissions
+      id: gradleperm
+      run: chmod +x gradlew    
     - name: build
       run: mvn verify -B
     - name: linux-x64
@@ -94,6 +97,9 @@ jobs:
       with:
         java-version: 11
         distribution: temurin
+    - name: 🗃️ Adding Permissions
+      id: gradleperm
+      run: chmod +x gradlew
     - name: build
       run: mvn verify -B
     - run: git clone https://github.com/runelite/create-dmg
