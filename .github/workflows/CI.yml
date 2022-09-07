@@ -32,7 +32,7 @@ jobs:
     - uses: actions/upload-artifact@v3
       with:
         name: windows-amd64
-        path: GlacyteSetup.exe
+        path: GlacyteSetup64.exe
         if-no-files-found: error
     - uses: actions/upload-artifact@v3
       with:
@@ -55,13 +55,13 @@ jobs:
       uses: actions/setup-java@v2
       with:
         java-version: 11
-        distribution: temurin
+        distribution: temurin   
     - name: build
       run: mvn verify -B
     - name: linux-x64
-      run: ./build-linux-x86_64.sh
+      run: chmod +x ./build-linux-x86_64.sh
     - name: linux-aarch64
-      run: ./build-linux-aarch64.sh
+      run: chmod +x ./build-linux-aarch64.sh
     - uses: actions/upload-artifact@v3
       with:
         name: jar
@@ -105,9 +105,9 @@ jobs:
         chmod +x create-dmg
     - run: echo create-dmg >> $GITHUB_PATH
     - name: macos-x64
-      run: ./build-osx-x64.sh
+      run: chmod +x ./build-osx-x64.sh
     - name: macos-aarch64
-      run: ./build-osx-aarch64.sh
+      run: chmod +x ./build-osx-aarch64.sh
     - uses: actions/upload-artifact@v3
       with:
         name: macos-x64
