@@ -108,10 +108,14 @@ jobs:
         ln -s cli.js create-dmg
         chmod +x create-dmg
     - run: echo create-dmg >> $GITHUB_PATH
+    - name: cmod macos-x64
+      run: chmod +x ./build-osx-x64.sh
     - name: macos-x64
       run: chmod +x ./build-osx-x64.sh
-    - name: macos-aarch64
+    - name: cmod macos-aarch64
       run: chmod +x ./build-osx-aarch64.sh
+    - name: macos-aarch64
+      run: ./build-osx-aarch64.sh
     - uses: actions/upload-artifact@v3
       with:
         name: macos-x64
