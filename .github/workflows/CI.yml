@@ -58,10 +58,14 @@ jobs:
         distribution: temurin   
     - name: build
       run: mvn verify -B
-    - name: linux-x64
+    - name: cmod linux-x64
       run: chmod +x ./build-linux-x86_64.sh
-    - name: linux-aarch64
+    - name: linux-x64
+      run: ./build-linux-x86_64.sh
+    - name: cmod linux-x64_64
       run: chmod +x ./build-linux-aarch64.sh
+    - name: linux-aarch64
+      run: ./build-linux-aarch64.sh
     - uses: actions/upload-artifact@v3
       with:
         name: jar
