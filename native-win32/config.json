@@ -1,0 +1,14 @@
+{
+  "classPath": [
+    "Glacyte.jar"
+  ],
+  "mainClass": "net.runelite.launcher.Launcher",
+  "vmArgs": [
+    "-Drunelite.launcher.nojvm=true",
+    "-Xmx512m",
+    "-Xss2m",
+    "-XX:CompileThreshold=1500"
+  ],
+  "env": {
+  }
+}

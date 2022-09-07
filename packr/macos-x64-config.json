@@ -1,0 +1,17 @@
+{
+    "platform": "mac64",
+    "icon": "packr/glacyte.icns",
+    "jdk": "osx-jdk",
+    "executable": "Glacyte",
+    "classpath": [
+        "target/Glacyte.jar"
+    ],
+    "mainclass": "net.runelite.launcher.Launcher",
+    "vmargs": [
+       "-Drunelite.launcher.nojvm=true",
+       "-Xmx512m",
+       "-Xss2m",
+       "-XX:CompileThreshold=1500"
+    ],
+    "output": "native-osx/Glacyte.app"
+}
