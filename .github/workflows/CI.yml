@@ -97,7 +97,7 @@ jobs:
     - uses: actions/upload-artifact@v3
       with:
         name: jar
-        path: target/glacyte.jar
+        path: target/Glacyte.jar
         if-no-files-found: error
     - uses: actions/upload-artifact@v3
       with:
