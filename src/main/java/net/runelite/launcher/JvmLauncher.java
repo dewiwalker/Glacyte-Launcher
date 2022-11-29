@@ -117,9 +117,12 @@ class JvmLauncher
 		}
 		arguments.addAll(jvmArgs);
 
-		if(type == SelectedType.NORMAL) {
+		if (type == SelectedType.NORMAL)
+		{
 			arguments.add(LauncherProperties.getMain());
-		} else if(type == SelectedType.BETA) {
+		}
+		else if (type == SelectedType.BETA)
+		{
 			arguments.add(LauncherProperties.getMainBeta());
 		}
 

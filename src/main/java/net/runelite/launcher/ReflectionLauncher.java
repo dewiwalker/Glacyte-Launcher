@@ -49,9 +49,12 @@ class ReflectionLauncher
 
 		String main = "";
 
-		if(type == SelectedType.NORMAL) {
+		if (type == SelectedType.NORMAL)
+		{
 			main = LauncherProperties.getMain();
-		} else if(type == SelectedType.BETA) {
+		}
+		else if (type == SelectedType.BETA)
+		{
 			main = LauncherProperties.getMainBeta();
 		}
 

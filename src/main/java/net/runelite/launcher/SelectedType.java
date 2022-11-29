@@ -1,6 +1,7 @@
 package net.runelite.launcher;
 
-public enum SelectedType {
-    NORMAL,
-    BETA
+public enum SelectedType
+{
+	NORMAL,
+	BETA
 }
