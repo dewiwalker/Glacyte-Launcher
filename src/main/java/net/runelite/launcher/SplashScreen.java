@@ -71,7 +71,7 @@ public class SplashScreen extends JFrame implements ActionListener
 	{
 		BufferedImage logo = ImageIO.read(SplashScreen.class.getResourceAsStream("runelite_transparent.png"));
 
-		setTitle("Glacyte Launcher");
+		setTitle(LauncherProperties.getApplicationName() + " Launcher");
 
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setUndecorated(true);

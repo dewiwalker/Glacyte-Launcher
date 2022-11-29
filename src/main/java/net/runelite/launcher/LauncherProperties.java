@@ -38,8 +38,17 @@ public class LauncherProperties
 	private static final String DNS_CHANGE_LINK = "runelite.dnschange.link";
 	private static final String DOWNLOAD_LINK = "runelite.download.link";
 	private static final String BOOTSTRAP = "runelite.bootstrap";
+
+	private static final String BOOTSTRAP_BETA = "runelite.bootstrap.beta";
+
 	private static final String BOOTSTRAPSIG = "runelite.bootstrapsig";
+	private static final String BOOTSTRAPSIG_BETA = "runelite.bootstrapsig.beta";
 	private static final String MAIN = "runelite.main";
+	private static final String MAIN_BETA = "runelite.main.beta";
+
+	private static final String WEBSITE_LINK = "runelite.website";
+
+	private static final String APP_NAME = "runelite.name";
 
 	private static final Properties properties = new Properties();
 
@@ -77,6 +86,16 @@ public class LauncherProperties
 		return properties.getProperty(TROUBLESHOOTING_LINK);
 	}
 
+	public static String getWebsiteLink()
+	{
+		return properties.getProperty(WEBSITE_LINK);
+	}
+
+	public static String getApplicationName()
+	{
+		return properties.getProperty(APP_NAME);
+	}
+
 	public static String getDNSChangeLink()
 	{
 		return properties.getProperty(DNS_CHANGE_LINK);
@@ -92,13 +111,30 @@ public class LauncherProperties
 		return properties.getProperty(BOOTSTRAP);
 	}
 
+	public static String getBootstrapBeta()
+	{
+		return properties.getProperty(BOOTSTRAP_BETA);
+	}
+
+
 	public static String getBootstrapSig()
 	{
 		return properties.getProperty(BOOTSTRAPSIG);
+	}
+
+	public static String getBootstrapSigBeta()
+	{
+		return properties.getProperty(BOOTSTRAPSIG_BETA);
 	}
 
 	public static String getMain()
 	{
 		return properties.getProperty(MAIN);
 	}
+
+	public static String getMainBeta()
+	{
+		return properties.getProperty(MAIN_BETA);
+	}
+
 }

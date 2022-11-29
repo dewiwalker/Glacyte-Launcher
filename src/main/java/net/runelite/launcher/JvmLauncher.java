@@ -76,7 +76,8 @@ class JvmLauncher
 		List<File> results,
 		Collection<String> clientArgs,
 		Map<String, String> jvmProps,
-		List<String> jvmArgs) throws IOException
+		List<String> jvmArgs,
+		SelectedType type) throws IOException
 	{
 		StringBuilder classPath = new StringBuilder();
 		for (File f : results)
@@ -116,7 +117,12 @@ class JvmLauncher
 		}
 		arguments.addAll(jvmArgs);
 
-		arguments.add(LauncherProperties.getMain());
+		if(type == SelectedType.NORMAL) {
+			arguments.add(LauncherProperties.getMain());
+		} else if(type == SelectedType.BETA) {
+			arguments.add(LauncherProperties.getMainBeta());
+		}
+
 		arguments.addAll(clientArgs);
 
 		logger.info("Running {}", arguments);

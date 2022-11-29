@@ -32,12 +32,12 @@ jobs:
     - uses: actions/upload-artifact@v3
       with:
         name: windows-amd64
-        path: GlacyteSetup64.exe
+        path: glacyteSetup64.exe
         if-no-files-found: error
     - uses: actions/upload-artifact@v3
       with:
         name: windows-x86
-        path: GlacyteSetup32.exe
+        path: glacyteSetup32.exe
         if-no-files-found: error
   linux:
     runs-on: ubuntu-20.04
@@ -69,17 +69,17 @@ jobs:
     - uses: actions/upload-artifact@v3
       with:
         name: jar
-        path: target/Glacyte.jar
+        path: target/glacyte.jar
         if-no-files-found: error
     - uses: actions/upload-artifact@v3
       with:
         name: linux-x64
-        path: native-linux-x86_64/Glacyte.AppImage
+        path: native-linux-x86_64/glacyte.AppImage
         if-no-files-found: error
     - uses: actions/upload-artifact@v3
       with:
         name: linux-aarch64
-        path: native-linux-aarch64/Glacyte-aarch64.AppImage
+        path: native-linux-aarch64/glacyte-aarch64.AppImage
         if-no-files-found: error
   macos:
     runs-on: macos-11
@@ -119,10 +119,10 @@ jobs:
     - uses: actions/upload-artifact@v3
       with:
         name: macos-x64
-        path: native-osx/Glacyte-x64.dmg
+        path: native-osx/glacyte-x64.dmg
         if-no-files-found: error
     - uses: actions/upload-artifact@v3
       with:
         name: macos-aarch64
-        path: native-osx-aarch64/Glacyte-aarch64.dmg
+        path: native-osx-aarch64/glacyte-aarch64.dmg
         if-no-files-found: error

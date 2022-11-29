@@ -14,7 +14,7 @@
     ],
     "output": "native-linux-aarch64/Glacyte.AppDir/",
     "resources": [
-      "target/filtered-resources/glacyte.desktop",
-      "appimage/glacyte.png"
+      "target/filtered-resources/app.desktop",
+      "appimage/app.png"
     ]
 }

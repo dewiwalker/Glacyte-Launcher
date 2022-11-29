@@ -37,7 +37,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 class ReflectionLauncher
 {
-	static void launch(List<File> results, Collection<String> clientArgs) throws MalformedURLException
+	static void launch(List<File> results, Collection<String> clientArgs, SelectedType type) throws MalformedURLException
 	{
 		URL[] jarUrls = new URL[results.size()];
 		int i = 0;
@@ -47,17 +47,26 @@ class ReflectionLauncher
 			jarUrls[i++] = file.toURI().toURL();
 		}
 
+		String main = "";
+
+		if(type == SelectedType.NORMAL) {
+			main = LauncherProperties.getMain();
+		} else if(type == SelectedType.BETA) {
+			main = LauncherProperties.getMainBeta();
+		}
+
 		ClassLoader parent = ClassLoader.getPlatformClassLoader();
 		URLClassLoader loader = new URLClassLoader(jarUrls, parent);
 
 		UIManager.put("ClassLoader", loader); // hack for Substance
+		String finalMain = main;
 		Thread thread = new Thread()
 		{
 			public void run()
 			{
 				try
 				{
-					Class<?> mainClass = loader.loadClass(LauncherProperties.getMain());
+					Class<?> mainClass = loader.loadClass(finalMain);
 
 					Method main = mainClass.getMethod("main", String[].class);
 					main.invoke(null, (Object) clientArgs.toArray(new String[0]));
@@ -68,7 +77,7 @@ class ReflectionLauncher
 				}
 			}
 		};
-		thread.setName("RuneLite");
+		thread.setName(LauncherProperties.getApplicationName());
 		thread.start();
 
 		SplashScreen.stop();

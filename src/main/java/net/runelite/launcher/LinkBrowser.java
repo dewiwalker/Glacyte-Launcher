@@ -35,6 +35,7 @@ import java.net.URISyntaxException;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.launcher.OS;
 
 /**
  * Utility class used for web and file browser navigation
@@ -42,6 +43,49 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class LinkBrowser
 {
+
+	public static boolean openLocalFile(final File file)
+	{
+		if (file == null || !file.exists())
+		{
+			return false;
+		}
+
+		if (attemptOpenLocalFile(file))
+		{
+			log.debug("Opened log file through Desktop#edit to {}", file);
+			return true;
+		}
+
+		showMessageBox("Unable to open log file. Press 'OK' and the file path will be copied to your clipboard", file.getAbsolutePath());
+		return false;
+	}
+
+	private static boolean attemptOpenLocalFile(final File file)
+	{
+		if (!Desktop.isDesktopSupported())
+		{
+			return false;
+		}
+
+		final Desktop desktop = Desktop.getDesktop();
+
+		if (!desktop.isSupported(Desktop.Action.OPEN))
+		{
+			return false;
+		}
+
+		try
+		{
+			desktop.open(file);
+			return true;
+		}
+		catch (IOException ex)
+		{
+			log.warn("Failed to open Desktop#edit {}", file, ex);
+			return false;
+		}
+	}
 	private static boolean shouldAttemptXdg = OS.getOs() == OS.OSType.Linux;
 
 	/**
@@ -50,7 +94,7 @@ public class LinkBrowser
 	 */
 	public static void browse(final String url)
 	{
-		new Thread(() -> 
+		new Thread(() ->
 		{
 			if (Strings.isNullOrEmpty(url))
 			{
@@ -196,7 +240,7 @@ public class LinkBrowser
 		SwingUtilities.invokeLater(() ->
 		{
 			final int result = JOptionPane.showConfirmDialog(null, message, "Message",
-				JOptionPane.OK_CANCEL_OPTION);
+					JOptionPane.OK_CANCEL_OPTION);
 
 			if (result == JOptionPane.OK_OPTION)
 			{

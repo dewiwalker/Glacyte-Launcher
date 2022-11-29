@@ -78,11 +78,13 @@ import java.util.function.IntConsumer;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
+import javax.annotation.Nullable;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
-import javax.swing.SwingUtilities;
+import javax.swing.*;
+
 import joptsimple.ArgumentAcceptingOptionSpec;
 import joptsimple.OptionException;
 import joptsimple.OptionParser;
@@ -92,14 +94,30 @@ import net.runelite.launcher.beans.Artifact;
 import net.runelite.launcher.beans.Bootstrap;
 import net.runelite.launcher.beans.Diff;
 import net.runelite.launcher.beans.Platform;
+import net.runelite.launcher.beta.FontManager;
+import net.runelite.launcher.beta.SplashScreenBeta;
 import org.slf4j.LoggerFactory;
 
 @Slf4j
 public class Launcher
 {
+
+	static boolean displayMulti;
+
+	public static boolean displayMultiOptions() {
+		try {
+			URL u = new URL(LauncherProperties.getBootstrapBeta());
+			long conn = u.openConnection().getContentLength();
+			return conn != -1;
+		} catch (IOException e) {
+			return false;
+		}
+	}
+
 	private static final File RUNELITE_DIR = new File(System.getProperty("user.home"), ".glacyte");
 	public static final File LOGS_DIR = new File(RUNELITE_DIR, "logs");
 	private static final File REPO_DIR = new File(RUNELITE_DIR, "repository2");
+	private static final File REPO_DIR_BETA = new File(RUNELITE_DIR, "repository2_beta");
 	public static final File CRASH_FILES = new File(LOGS_DIR, "jvm_crash_pid_%p.log");
 	private static final String USER_AGENT = "RuneLite/" + LauncherProperties.getVersion();
 
@@ -116,7 +134,7 @@ public class Launcher
 		parser.accepts("use-jre-truststore", "Use JRE cacerts truststore instead of the Windows Trusted Root Certificate Authorities (only on Windows)");
 		parser.accepts("scale", "Custom scale factor for Java 2D").withRequiredArg();
 		parser.accepts("help", "Show this text (use --clientargs --help for client help)").forHelp();
-
+		displayMulti = displayMultiOptions();
 		if (OS.getOs() == OS.OSType.MacOS)
 		{
 			// Parse macos PSN, eg: -psn_0_352342
@@ -140,7 +158,7 @@ public class Launcher
 		{
 			log.error("unable to parse arguments", ex);
 			SwingUtilities.invokeLater(() ->
-				new FatalErrorDialog("Glacyte was unable to parse the provided application arguments: " + ex.getMessage())
+				new FatalErrorDialog("{name} was unable to parse the provided application arguments: " + ex.getMessage())
 					.open());
 			throw ex;
 		}
@@ -177,7 +195,7 @@ public class Launcher
 
 		try
 		{
-			log.info("Glacyte Launcher version {}", LauncherProperties.getVersion());
+			log.info(LauncherProperties.getApplicationName() + " Launcher version {}", LauncherProperties.getVersion());
 
 			final Map<String, String> jvmProps = new LinkedHashMap<>();
 			if (options.has("scale"))
@@ -232,98 +250,157 @@ public class Launcher
 				setupInsecureTrustManager();
 			}
 
-			if (postInstall)
-			{
-				postInstall(jvmParams);
-				return;
-			}
 
-			SplashScreen.init();
-			SplashScreen.stage(0, "Preparing", "Setting up environment");
+			if (displayMulti) {
+				FontManager.init();
+				SplashScreenBeta.init();
+				SplashScreenBeta.barMessage(null);
+				SplashScreenBeta.message(null);
+				List<JButton> buttons = SplashScreenBeta.addButtons();
 
-			// Print out system info
-			if (log.isDebugEnabled())
-			{
-				final RuntimeMXBean runtime = ManagementFactory.getRuntimeMXBean();
-
-				log.debug("Command line arguments: {}", String.join(" ", args));
-				// This includes arguments from _JAVA_OPTIONS, which are parsed after command line flags and applied to
-				// the global VM args
-				log.debug("Java VM arguments: {}", String.join(" ", runtime.getInputArguments()));
-				log.debug("Java Environment:");
-				final Properties p = System.getProperties();
-				final Enumeration<Object> keys = p.keys();
-
-				while (keys.hasMoreElements())
+				if (buttons != null)
 				{
-					final String key = (String) keys.nextElement();
-					final String value = (String) p.get(key);
-					log.debug("  {}: {}", key, value);
+					buttons.get(0).addActionListener(e ->
+					{
+						Runnable task = () -> launch(SelectedType.NORMAL,args,jvmParams,jvmProps,options,isDebug,nodiff,postInstall);
+						Thread thread = new Thread(task);
+						thread.start();
+					});
+
+					buttons.get(1).addActionListener(e ->
+					{
+						Runnable task = () -> launch(SelectedType.BETA,args,jvmParams,jvmProps,options,isDebug,nodiff,postInstall);
+						Thread thread = new Thread(task);
+						thread.start();
+					});
 				}
+
+			} else {
+				SplashScreen.init();
+				Runnable task = () -> launch(SelectedType.NORMAL,args,jvmParams,jvmProps,options,isDebug,nodiff,postInstall);
+				Thread thread = new Thread(task);
+				thread.start();
 			}
 
-			SplashScreen.stage(.05, null, "Downloading bootstrap");
-			Bootstrap bootstrap;
-			try
+
+
+		}
+		catch (Exception e)
+		{
+			log.error("Failure during startup", e);
+			if (!postInstall)
 			{
-				bootstrap = getBootstrap();
+				SwingUtilities.invokeLater(() ->
+					new FatalErrorDialog("{name} has encountered an unexpected error during startup.")
+						.open());
 			}
-			catch (IOException | VerificationException | CertificateException | SignatureException | InvalidKeyException | NoSuchAlgorithmException ex)
+		}
+		catch (Error e)
+		{
+			// packr seems to eat exceptions thrown out of main, so at least try to log it
+			log.error("Failure during startup", e);
+			throw e;
+		}
+		finally
+		{
+
+		}
+	}
+
+	public static void launch(SelectedType type,String[] args, List<String> jvmParams, Map<String, String> jvmProps, OptionSet options, boolean isDebug, boolean nodiff, boolean postInstall) {
+		if (postInstall)
+		{
+			postInstall(jvmParams,type);
+			return;
+		}
+		stage(0, "Preparing", "Setting up environment");
+
+		// Print out system info
+		if (log.isDebugEnabled())
+		{
+			final RuntimeMXBean runtime = ManagementFactory.getRuntimeMXBean();
+
+			log.debug("Command line arguments: {}", String.join(" ", args));
+			// This includes arguments from _JAVA_OPTIONS, which are parsed after command line flags and applied to
+			// the global VM args
+			log.debug("Java VM arguments: {}", String.join(" ", runtime.getInputArguments()));
+			log.debug("Java Environment:");
+			final Properties p = System.getProperties();
+			final Enumeration<Object> keys = p.keys();
+
+			while (keys.hasMoreElements())
 			{
-				log.error("error fetching bootstrap", ex);
-				SwingUtilities.invokeLater(() -> FatalErrorDialog.showNetErrorWindow("downloading the bootstrap", ex));
-				return;
+				final String key = (String) keys.nextElement();
+				final String value = (String) p.get(key);
+				log.debug("  {}: {}", key, value);
 			}
+		}
 
-			SplashScreen.stage(.10, null, "Tidying the cache");
+		stage(.05, null, "Downloading bootstrap");
+		Bootstrap bootstrap;
+		try
+		{
+			bootstrap = getBootstrap(type);
+		}
+		catch (IOException | VerificationException | CertificateException | SignatureException | InvalidKeyException | NoSuchAlgorithmException ex)
+		{
+			log.error("error fetching bootstrap", ex);
+			SwingUtilities.invokeLater(() -> FatalErrorDialog.showNetErrorWindow("downloading the bootstrap", ex));
+			return;
+		}
 
-			boolean launcherTooOld = bootstrap.getRequiredLauncherVersion() != null &&
+		stage(.10, null, "Tidying the cache");
+
+		boolean launcherTooOld = bootstrap.getRequiredLauncherVersion() != null &&
 				compareVersion(bootstrap.getRequiredLauncherVersion(), LauncherProperties.getVersion()) > 0;
 
-			boolean jvmTooOld = false;
-			try
+		boolean jvmTooOld = false;
+		try
+		{
+			if (bootstrap.getRequiredJVMVersion() != null)
 			{
-				if (bootstrap.getRequiredJVMVersion() != null)
-				{
-					jvmTooOld = Runtime.Version.parse(bootstrap.getRequiredJVMVersion())
+				jvmTooOld = Runtime.Version.parse(bootstrap.getRequiredJVMVersion())
 						.compareTo(Runtime.version()) > 0;
-				}
 			}
-			catch (IllegalArgumentException e)
-			{
-				log.warn("Unable to parse bootstrap version", e);
-			}
+		}
+		catch (IllegalArgumentException e)
+		{
+			log.warn("Unable to parse bootstrap version", e);
+		}
 
-			boolean nojvm = "true".equals(System.getProperty("runelite.launcher.nojvm"));
+		boolean nojvm = "true".equals(System.getProperty("runelite.launcher.nojvm"));
 
-			if (launcherTooOld || (nojvm && jvmTooOld))
-			{
-				SwingUtilities.invokeLater(() ->
-					new FatalErrorDialog("Your launcher is to old to start Glacyte. Please download and install a more " +
-						"recent one from glacyte.net.")
-						.addButton("glacyte.net", () -> LinkBrowser.browse(LauncherProperties.getDownloadLink()))
-						.open());
-				return;
-			}
-			if (jvmTooOld)
-			{
-				SwingUtilities.invokeLater(() ->
-					new FatalErrorDialog("Your Java installation is too old. Glacyte now requires Java " +
-						bootstrap.getRequiredJVMVersion() + " to run. You can get a platform specific version from glacyte.net," +
-						" or install a newer version of Java.")
-						.addButton("glacyte.net", () -> LinkBrowser.browse(LauncherProperties.getDownloadLink()))
-						.open());
-				return;
-			}
+		if (launcherTooOld || (nojvm && jvmTooOld))
+		{
+			SwingUtilities.invokeLater(() ->
+					new FatalErrorDialog("Your launcher is to old to start {name}. Please download and install a more " +
+							"recent one from " + LauncherProperties.getWebsiteLink() + ".")
+							.addButton(LauncherProperties.getWebsiteLink(), () -> LinkBrowser.browse(LauncherProperties.getDownloadLink()))
+							.open());
+			return;
+		}
+		if (jvmTooOld)
+		{
+			SwingUtilities.invokeLater(() ->
+					new FatalErrorDialog("Your Java installation is too old. {name} now requires Java " +
+							bootstrap.getRequiredJVMVersion() + " to run. You can get a platform specific version from {website}," +
+							" or install a newer version of Java.")
+							.addButton(LauncherProperties.getWebsiteLink(), () -> LinkBrowser.browse(LauncherProperties.getDownloadLink()))
+							.open());
+			return;
+		}
 
-			// update packr vmargs. The only extra vmargs we need to write to disk are the ones which cannot be set
-			// at runtime, which currently is just the vm errorfile.
-			PackrConfig.updateLauncherArgs(bootstrap, jvmParams);
-
+		// update packr vmargs. The only extra vmargs we need to write to disk are the ones which cannot be set
+		// at runtime, which currently is just the vm errorfile.
+		PackrConfig.updateLauncherArgs(bootstrap, jvmParams);
+		if(type == SelectedType.NORMAL) {
 			REPO_DIR.mkdirs();
+		} else if (type == SelectedType.BETA) {
+			REPO_DIR_BETA.mkdirs();
+		}
 
-			// Determine artifacts for this OS
-			List<Artifact> artifacts = Arrays.stream(bootstrap.getArtifacts())
+		// Determine artifacts for this OS
+		List<Artifact> artifacts = Arrays.stream(bootstrap.getArtifacts())
 				.filter(a ->
 				{
 					if (a.getPlatform() == null)
@@ -342,7 +419,7 @@ public class Launcher
 
 						OS.OSType platformOs = OS.parseOs(platform.getName());
 						if ((platformOs == OS.OSType.Other ? platform.getName().equals(os) : platformOs == OS.getOs())
-							&& (platform.getArch() == null || platform.getArch().equals(arch)))
+								&& (platform.getArch() == null || platform.getArch().equals(arch)))
 						{
 							return true;
 						}
@@ -352,89 +429,81 @@ public class Launcher
 				})
 				.collect(Collectors.toList());
 
-			// Clean out old artifacts from the repository
-			clean(artifacts);
+		// Clean out old artifacts from the repository
+		clean(artifacts,type);
 
+		try
+		{
+			download(artifacts, nodiff,type);
+		}
+		catch (IOException ex)
+		{
+			log.error("unable to download artifacts", ex);
+			SwingUtilities.invokeLater(() -> FatalErrorDialog.showNetErrorWindow("downloading the client", ex));
+			return;
+		}
+
+		stage(.80, null, "Verifying");
+		try
+		{
+			verifyJarHashes(artifacts,type);
+		}
+		catch (VerificationException ex)
+		{
+			log.error("Unable to verify artifacts", ex);
+			SwingUtilities.invokeLater(() -> FatalErrorDialog.showNetErrorWindow("verifying downloaded files", ex));
+			return;
+		}
+
+		final Collection<String> clientArgs = getClientArgs(options);
+
+		if (isDebug)
+		{
+			clientArgs.add("--debug");
+		}
+
+		stage(.90, "Starting the client", "");
+
+		File location = new File("");
+
+		if(type == SelectedType.NORMAL) {
+			location = REPO_DIR;
+		} else if (type == SelectedType.BETA) {
+			location = REPO_DIR_BETA;
+		}
+
+		File finalLocation = location;
+		List<File> classpath = artifacts.stream()
+				.map(dep -> new File(finalLocation, dep.getName()))
+				.collect(Collectors.toList());
+
+		// packr doesn't let us specify command line arguments
+		if (nojvm || options.has("nojvm"))
+		{
 			try
 			{
-				download(artifacts, nodiff);
+				ReflectionLauncher.launch(classpath, clientArgs,type);
+				close();
+			}
+			catch (MalformedURLException ex)
+			{
+				log.error("unable to launch client", ex);
+			}
+		}
+		else
+		{
+			try
+			{
+				JvmLauncher.launch(bootstrap, classpath, clientArgs, jvmProps, jvmParams, type);
+				close();
 			}
 			catch (IOException ex)
 			{
-				log.error("unable to download artifacts", ex);
-				SwingUtilities.invokeLater(() -> FatalErrorDialog.showNetErrorWindow("downloading the client", ex));
-				return;
-			}
-
-			SplashScreen.stage(.80, null, "Verifying");
-			try
-			{
-				verifyJarHashes(artifacts);
-			}
-			catch (VerificationException ex)
-			{
-				log.error("Unable to verify artifacts", ex);
-				SwingUtilities.invokeLater(() -> FatalErrorDialog.showNetErrorWindow("verifying downloaded files", ex));
-				return;
-			}
-
-			final Collection<String> clientArgs = getClientArgs(options);
-
-			if (isDebug)
-			{
-				clientArgs.add("--debug");
-			}
-
-			SplashScreen.stage(.90, "Starting the client", "");
-
-			List<File> classpath = artifacts.stream()
-				.map(dep -> new File(REPO_DIR, dep.getName()))
-				.collect(Collectors.toList());
-
-			// packr doesn't let us specify command line arguments
-			if (nojvm || options.has("nojvm"))
-			{
-				try
-				{
-					ReflectionLauncher.launch(classpath, clientArgs);
-				}
-				catch (MalformedURLException ex)
-				{
-					log.error("unable to launch client", ex);
-				}
-			}
-			else
-			{
-				try
-				{
-					JvmLauncher.launch(bootstrap, classpath, clientArgs, jvmProps, jvmParams);
-				}
-				catch (IOException ex)
-				{
-					log.error("unable to launch client", ex);
-				}
+				log.error("unable to launch client", ex);
 			}
 		}
-		catch (Exception e)
-		{
-			log.error("Failure during startup", e);
-			if (!postInstall)
-			{
-				SwingUtilities.invokeLater(() ->
-					new FatalErrorDialog("Glacyte has encountered an unexpected error during startup.")
-						.open());
-			}
-		}
-		catch (Error e)
-		{
-			// packr seems to eat exceptions thrown out of main, so at least try to log it
-			log.error("Failure during startup", e);
-			throw e;
-		}
-		finally
-		{
-			SplashScreen.stop();
-		}
+
+
 	}
 
 	private static void setJvmParams(final Map<String, String> params)
@@ -445,10 +514,24 @@ public class Launcher
 		}
 	}
 
-	private static Bootstrap getBootstrap() throws IOException, CertificateException, NoSuchAlgorithmException, InvalidKeyException, SignatureException, VerificationException
+	private static Bootstrap getBootstrap(SelectedType type) throws IOException, CertificateException, NoSuchAlgorithmException, InvalidKeyException, SignatureException, VerificationException
 	{
-		URL u = new URL(LauncherProperties.getBootstrap());
-		URL signatureUrl = new URL(LauncherProperties.getBootstrapSig());
+		URL u = null;
+		if(type == SelectedType.NORMAL) {
+			u = new URL(LauncherProperties.getBootstrap());
+		} else if (type == SelectedType.BETA) {
+			u = new URL(LauncherProperties.getBootstrapBeta());
+		}
+
+
+		URL signatureUrl = null;
+
+		if(type == SelectedType.NORMAL) {
+			signatureUrl = new URL(LauncherProperties.getBootstrapSig());
+		} else if (type == SelectedType.BETA) {
+			signatureUrl = new URL(LauncherProperties.getBootstrapSigBeta());
+		}
+
 
 		URLConnection conn = u.openConnection();
 		URLConnection signatureConn = signatureUrl.openConnection();
@@ -499,7 +582,7 @@ public class Launcher
 		return args;
 	}
 
-	private static void download(List<Artifact> artifacts, boolean nodiff) throws IOException
+	private static void download(List<Artifact> artifacts, boolean nodiff, SelectedType type) throws IOException
 	{
 		List<Artifact> toDownload = new ArrayList<>(artifacts.size());
 		Map<Artifact, Diff> diffs = new HashMap<>();
@@ -512,9 +595,18 @@ public class Launcher
 			nodiff = true;
 		}
 
+
+		File saveLocation = new File("");
+
+		if(type == SelectedType.NORMAL) {
+			saveLocation = REPO_DIR;
+		} else if (type == SelectedType.BETA) {
+			saveLocation = REPO_DIR_BETA;
+		}
+
 		for (Artifact artifact : artifacts)
 		{
-			File dest = new File(REPO_DIR, artifact.getName());
+			File dest = new File(saveLocation, artifact.getName());
 
 			String hash;
 			try
@@ -539,7 +631,7 @@ public class Launcher
 			{
 				for (Diff diff : artifact.getDiffs())
 				{
-					File old = new File(REPO_DIR, diff.getFrom());
+					File old = new File(saveLocation, diff.getFrom());
 
 					String oldhash;
 					try
@@ -566,11 +658,11 @@ public class Launcher
 
 		final double START_PROGRESS = .15;
 		int downloaded = 0;
-		SplashScreen.stage(START_PROGRESS, "Downloading", "");
+		stage(START_PROGRESS, "Downloading", "");
 
 		for (Artifact artifact : toDownload)
 		{
-			File dest = new File(REPO_DIR, artifact.getName());
+			File dest = new File(saveLocation, artifact.getName());
 			final int total = downloaded;
 
 			// Check if there is a diff we can download instead
@@ -584,11 +676,11 @@ public class Launcher
 					ByteArrayOutputStream out = new ByteArrayOutputStream();
 					final int totalBytes = totalDownloadBytes;
 					download(diff.getPath(), diff.getHash(), (completed) ->
-						SplashScreen.stage(START_PROGRESS, .80, null, diff.getName(), total + completed, totalBytes, true),
+						stage(START_PROGRESS, .80, null, diff.getName(), total + completed, totalBytes, true),
 						out);
 					downloaded += diff.getSize();
 
-					File old = new File(REPO_DIR, diff.getFrom());
+					File old = new File(saveLocation, diff.getFrom());
 					HashCode hash;
 					try (InputStream patchStream = new GZIPInputStream(new ByteArrayInputStream(out.toByteArray()));
 						HashingOutputStream fout = new HashingOutputStream(Hashing.sha256(), Files.newOutputStream(dest.toPath())))
@@ -622,7 +714,7 @@ public class Launcher
 			{
 				final int totalBytes = totalDownloadBytes;
 				download(artifact.getPath(), artifact.getHash(), (completed) ->
-					SplashScreen.stage(START_PROGRESS, .80, null, artifact.getName(), total + completed, totalBytes, true),
+					stage(START_PROGRESS, .80, null, artifact.getName(), total + completed, totalBytes, true),
 					fout);
 				downloaded += artifact.getSize();
 			}
@@ -633,9 +725,17 @@ public class Launcher
 		}
 	}
 
-	private static void clean(List<Artifact> artifacts)
+	private static void clean(List<Artifact> artifacts, SelectedType type)
 	{
-		File[] existingFiles = REPO_DIR.listFiles();
+		File saveLocation = new File("");
+
+		if(type == SelectedType.NORMAL) {
+			saveLocation = REPO_DIR;
+		} else if (type == SelectedType.BETA) {
+			saveLocation = REPO_DIR_BETA;
+		}
+
+		File[] existingFiles = saveLocation.listFiles();
 
 		if (existingFiles == null)
 		{
@@ -672,15 +772,23 @@ public class Launcher
 		}
 	}
 
-	private static void verifyJarHashes(List<Artifact> artifacts) throws VerificationException
+	private static void verifyJarHashes(List<Artifact> artifacts, SelectedType type) throws VerificationException
 	{
+		File saveLocation = new File("");
+
+		if(type == SelectedType.NORMAL) {
+			saveLocation = REPO_DIR;
+		} else if (type == SelectedType.BETA) {
+			saveLocation = REPO_DIR_BETA;
+		}
+
 		for (Artifact artifact : artifacts)
 		{
 			String expectedHash = artifact.getHash();
 			String fileHash;
 			try
 			{
-				fileHash = hash(new File(REPO_DIR, artifact.getName()));
+				fileHash = hash(new File(saveLocation, artifact.getName()));
 			}
 			catch (IOException e)
 			{
@@ -829,12 +937,12 @@ public class Launcher
 		HttpsURLConnection.setDefaultHostnameVerifier((hostname, session) -> true);
 	}
 
-	private static void postInstall(List<String> jvmParams)
+	private static void postInstall(List<String> jvmParams, SelectedType type)
 	{
 		Bootstrap bootstrap;
 		try
 		{
-			bootstrap = getBootstrap();
+			bootstrap = getBootstrap(type);
 		}
 		catch (IOException | VerificationException | CertificateException | SignatureException | InvalidKeyException | NoSuchAlgorithmException ex)
 		{
@@ -845,6 +953,34 @@ public class Launcher
 		PackrConfig.updateLauncherArgs(bootstrap, jvmParams);
 
 		log.info("Performed postinstall steps");
+	}
+
+
+	public static void stage(double startProgress, double endProgress,
+							 @Nullable String actionText, String subActionText,
+							 int done, int total, boolean mib) {
+		if (displayMulti) {
+			SplashScreenBeta.stage(startProgress, endProgress, subActionText, done, total, mib);
+		} else {
+			SplashScreen.stage(startProgress, endProgress,
+			actionText, subActionText, done, total, mib);
+		}
+	}
+
+	public static void stage(double overallProgress, @Nullable String actionText, String subActionText) {
+		if (displayMulti) {
+			SplashScreenBeta.stage(overallProgress,subActionText);
+		} else {
+			SplashScreen.stage(overallProgress,actionText,subActionText);
+		}
+	}
+
+	public static void close() {
+		if (displayMulti) {
+			SplashScreenBeta.close();
+		} else {
+			SplashScreen.stop();
+		}
 	}
 
 	private static void initDllBlacklist()

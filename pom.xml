@@ -41,9 +41,9 @@
 	</properties>
 
 	<scm>
-		<url>https://github.com/dewiwalker/Glacyte-Launcher</url>
-		<connection>scm:git:git://github.com/dewiwalker/Glacyte-Launcher</connection>
-		<developerConnection>scm:git:git@github.com:dewiwalker/Glacyte-Launcher</developerConnection>
+		<url>https://github.com/runelite/launcher</url>
+		<connection>scm:git:git://github.com/runelite/launcher</connection>
+		<developerConnection>scm:git:git@github.com:runelite/launcher</developerConnection>
 		<tag>HEAD</tag>
 	</scm>
 

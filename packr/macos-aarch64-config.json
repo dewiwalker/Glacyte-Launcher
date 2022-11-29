@@ -1,6 +1,6 @@
 {
     "platform": "macaarch64",
-    "icon": "packr/glacyte.icns",
+    "icon": "packr/app.icns",
     "jdk": "osx-aarch64-jdk",
     "executable": "Glacyte",
     "classpath": [

@@ -89,7 +89,7 @@ class PackrConfig
 
 		try
 		{
-			File tmpFile = File.createTempFile("glacyte", null);
+			File tmpFile = File.createTempFile(LauncherProperties.getApplicationName().toLowerCase(), null);
 
 			try (FileOutputStream fout = new FileOutputStream(tmpFile);
 				FileChannel channel = fout.getChannel();
