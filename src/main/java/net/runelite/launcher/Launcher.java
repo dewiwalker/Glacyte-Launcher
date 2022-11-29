@@ -25,7 +25,26 @@
 package net.runelite.launcher;
 
 import ch.qos.logback.classic.Level;
+import com.google.common.base.MoreObjects;
+import com.google.common.escape.Escapers;
+import com.google.gson.JsonParseException;
+import java.io.BufferedReader;
 import ch.qos.logback.classic.Logger;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileInputStream;
+import java.nio.channels.FileChannel;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.time.Instant;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
+import java.io.PrintWriter;
+import javax.annotation.Nonnull;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import net.runelite.launcher.beans.Update;
+import java.nio.file.StandardCopyOption;
 import com.google.archivepatcher.applier.FileByFileV1DeltaApplier;
 import com.google.archivepatcher.shared.DefaultDeflateCompatibilityWindow;
 import com.google.common.annotations.VisibleForTesting;
@@ -104,12 +123,16 @@ public class Launcher
 
 	static boolean displayMulti;
 
-	public static boolean displayMultiOptions() {
-		try {
+	public static boolean displayMultiOptions()
+	{
+		try
+		{
 			URL u = new URL(LauncherProperties.getBootstrapBeta());
 			long conn = u.openConnection().getContentLength();
 			return conn != -1;
-		} catch (IOException e) {
+		}
+		catch (IOException e)
+		{
 			return false;
 		}
 	}
@@ -120,6 +143,8 @@ public class Launcher
 	private static final File REPO_DIR_BETA = new File(RUNELITE_DIR, "repository2_beta");
 	public static final File CRASH_FILES = new File(LOGS_DIR, "jvm_crash_pid_%p.log");
 	private static final String USER_AGENT = "RuneLite/" + LauncherProperties.getVersion();
+	private static final String LAUNCHER_EXECUTABLE_NAME = "RuneLite.exe";
+	private static final String LAUNCHER_SETTINGS = "settings.json";
 
 	public static void main(String[] args)
 	{
@@ -133,6 +158,7 @@ public class Launcher
 		parser.accepts("insecure-skip-tls-verification", "Disable TLS certificate and hostname verification");
 		parser.accepts("use-jre-truststore", "Use JRE cacerts truststore instead of the Windows Trusted Root Certificate Authorities (only on Windows)");
 		parser.accepts("scale", "Custom scale factor for Java 2D").withRequiredArg();
+		parser.accepts("noupdate", "Skips the launcher self-update (Windows only)");
 		parser.accepts("help", "Show this text (use --clientargs --help for client help)").forHelp();
 		displayMulti = displayMultiOptions();
 		if (OS.getOs() == OS.OSType.MacOS)
@@ -189,6 +215,8 @@ public class Launcher
 			final Logger logger = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
 			logger.setLevel(Level.DEBUG);
 		}
+
+		initDll();
 
 		// RTSS triggers off of the CreateWindow event, so this needs to be in place early, prior to splash screen
 		initDllBlacklist();
@@ -251,7 +279,8 @@ public class Launcher
 			}
 
 
-			if (displayMulti) {
+			if (displayMulti)
+			{
 				FontManager.init();
 				SplashScreenBeta.init();
 				SplashScreenBeta.barMessage(null);
@@ -262,26 +291,27 @@ public class Launcher
 				{
 					buttons.get(0).addActionListener(e ->
 					{
-						Runnable task = () -> launch(SelectedType.NORMAL,args,jvmParams,jvmProps,options,isDebug,nodiff,postInstall);
+						Runnable task = () -> launch(SelectedType.NORMAL, args, jvmParams, jvmProps, options, isDebug, nodiff, postInstall);
 						Thread thread = new Thread(task);
 						thread.start();
 					});
 
 					buttons.get(1).addActionListener(e ->
 					{
-						Runnable task = () -> launch(SelectedType.BETA,args,jvmParams,jvmProps,options,isDebug,nodiff,postInstall);
+						Runnable task = () -> launch(SelectedType.BETA, args, jvmParams, jvmProps, options, isDebug, nodiff, postInstall);
 						Thread thread = new Thread(task);
 						thread.start();
 					});
 				}
 
-			} else {
+			}
+			else
+			{
 				SplashScreen.init();
-				Runnable task = () -> launch(SelectedType.NORMAL,args,jvmParams,jvmProps,options,isDebug,nodiff,postInstall);
+				Runnable task = () -> launch(SelectedType.NORMAL, args, jvmParams, jvmProps, options, isDebug, nodiff, postInstall);
 				Thread thread = new Thread(task);
 				thread.start();
 			}
-
 
 
 		}
@@ -307,10 +337,11 @@ public class Launcher
 		}
 	}
 
-	public static void launch(SelectedType type,String[] args, List<String> jvmParams, Map<String, String> jvmProps, OptionSet options, boolean isDebug, boolean nodiff, boolean postInstall) {
+	public static void launch(SelectedType type, String[] args, List<String> jvmParams, Map<String, String> jvmProps, OptionSet options, boolean isDebug, boolean nodiff, boolean postInstall)
+	{
 		if (postInstall)
 		{
-			postInstall(jvmParams,type);
+			postInstall(jvmParams, type);
 			return;
 		}
 		stage(0, "Preparing", "Setting up environment");
@@ -342,17 +373,22 @@ public class Launcher
 		{
 			bootstrap = getBootstrap(type);
 		}
-		catch (IOException | VerificationException | CertificateException | SignatureException | InvalidKeyException | NoSuchAlgorithmException ex)
+		catch (IOException | VerificationException | CertificateException | SignatureException | InvalidKeyException |
+			   NoSuchAlgorithmException ex)
 		{
 			log.error("error fetching bootstrap", ex);
 			SwingUtilities.invokeLater(() -> FatalErrorDialog.showNetErrorWindow("downloading the bootstrap", ex));
 			return;
 		}
 
+		SplashScreen.stage(.07, null, "Checking for updates");
+
+		update(bootstrap, options, args);
+
 		stage(.10, null, "Tidying the cache");
 
 		boolean launcherTooOld = bootstrap.getRequiredLauncherVersion() != null &&
-				compareVersion(bootstrap.getRequiredLauncherVersion(), LauncherProperties.getVersion()) > 0;
+			compareVersion(bootstrap.getRequiredLauncherVersion(), LauncherProperties.getVersion()) > 0;
 
 		boolean jvmTooOld = false;
 		try
@@ -360,7 +396,7 @@ public class Launcher
 			if (bootstrap.getRequiredJVMVersion() != null)
 			{
 				jvmTooOld = Runtime.Version.parse(bootstrap.getRequiredJVMVersion())
-						.compareTo(Runtime.version()) > 0;
+					.compareTo(Runtime.version()) > 0;
 			}
 		}
 		catch (IllegalArgumentException e)
@@ -373,68 +409,71 @@ public class Launcher
 		if (launcherTooOld || (nojvm && jvmTooOld))
 		{
 			SwingUtilities.invokeLater(() ->
-					new FatalErrorDialog("Your launcher is to old to start {name}. Please download and install a more " +
-							"recent one from " + LauncherProperties.getWebsiteLink() + ".")
-							.addButton(LauncherProperties.getWebsiteLink(), () -> LinkBrowser.browse(LauncherProperties.getDownloadLink()))
-							.open());
+				new FatalErrorDialog("Your launcher is too old to start {name}. Please download and install a more " +
+					"recent one from " + LauncherProperties.getWebsiteLink() + ".")
+					.addButton(LauncherProperties.getWebsiteLink(), () -> LinkBrowser.browse(LauncherProperties.getDownloadLink()))
+					.open());
 			return;
 		}
 		if (jvmTooOld)
 		{
 			SwingUtilities.invokeLater(() ->
-					new FatalErrorDialog("Your Java installation is too old. {name} now requires Java " +
-							bootstrap.getRequiredJVMVersion() + " to run. You can get a platform specific version from {website}," +
-							" or install a newer version of Java.")
-							.addButton(LauncherProperties.getWebsiteLink(), () -> LinkBrowser.browse(LauncherProperties.getDownloadLink()))
-							.open());
+				new FatalErrorDialog("Your Java installation is too old. {name} now requires Java " +
+					bootstrap.getRequiredJVMVersion() + " to run. You can get a platform specific version from {website}," +
+					" or install a newer version of Java.")
+					.addButton(LauncherProperties.getWebsiteLink(), () -> LinkBrowser.browse(LauncherProperties.getDownloadLink()))
+					.open());
 			return;
 		}
 
 		// update packr vmargs. The only extra vmargs we need to write to disk are the ones which cannot be set
 		// at runtime, which currently is just the vm errorfile.
 		PackrConfig.updateLauncherArgs(bootstrap, jvmParams);
-		if(type == SelectedType.NORMAL) {
+		if (type == SelectedType.NORMAL)
+		{
 			REPO_DIR.mkdirs();
-		} else if (type == SelectedType.BETA) {
+		}
+		else if (type == SelectedType.BETA)
+		{
 			REPO_DIR_BETA.mkdirs();
 		}
 
 		// Determine artifacts for this OS
 		List<Artifact> artifacts = Arrays.stream(bootstrap.getArtifacts())
-				.filter(a ->
+			.filter(a ->
+			{
+				if (a.getPlatform() == null)
 				{
-					if (a.getPlatform() == null)
+					return true;
+				}
+
+				final String os = System.getProperty("os.name");
+				final String arch = System.getProperty("os.arch");
+				for (Platform platform : a.getPlatform())
+				{
+					if (platform.getName() == null)
+					{
+						continue;
+					}
+
+					OS.OSType platformOs = OS.parseOs(platform.getName());
+					if ((platformOs == OS.OSType.Other ? platform.getName().equals(os) : platformOs == OS.getOs())
+						&& (platform.getArch() == null || platform.getArch().equals(arch)))
 					{
 						return true;
 					}
+				}
 
-					final String os = System.getProperty("os.name");
-					final String arch = System.getProperty("os.arch");
-					for (Platform platform : a.getPlatform())
-					{
-						if (platform.getName() == null)
-						{
-							continue;
-						}
-
-						OS.OSType platformOs = OS.parseOs(platform.getName());
-						if ((platformOs == OS.OSType.Other ? platform.getName().equals(os) : platformOs == OS.getOs())
-								&& (platform.getArch() == null || platform.getArch().equals(arch)))
-						{
-							return true;
-						}
-					}
-
-					return false;
-				})
-				.collect(Collectors.toList());
+				return false;
+			})
+			.collect(Collectors.toList());
 
 		// Clean out old artifacts from the repository
-		clean(artifacts,type);
+		clean(artifacts, type);
 
 		try
 		{
-			download(artifacts, nodiff,type);
+			download(artifacts, nodiff, type);
 		}
 		catch (IOException ex)
 		{
@@ -446,7 +485,7 @@ public class Launcher
 		stage(.80, null, "Verifying");
 		try
 		{
-			verifyJarHashes(artifacts,type);
+			verifyJarHashes(artifacts, type);
 		}
 		catch (VerificationException ex)
 		{
@@ -466,23 +505,26 @@ public class Launcher
 
 		File location = new File("");
 
-		if(type == SelectedType.NORMAL) {
+		if (type == SelectedType.NORMAL)
+		{
 			location = REPO_DIR;
-		} else if (type == SelectedType.BETA) {
+		}
+		else if (type == SelectedType.BETA)
+		{
 			location = REPO_DIR_BETA;
 		}
 
 		File finalLocation = location;
 		List<File> classpath = artifacts.stream()
-				.map(dep -> new File(finalLocation, dep.getName()))
-				.collect(Collectors.toList());
+			.map(dep -> new File(finalLocation, dep.getName()))
+			.collect(Collectors.toList());
 
 		// packr doesn't let us specify command line arguments
 		if (nojvm || options.has("nojvm"))
 		{
 			try
 			{
-				ReflectionLauncher.launch(classpath, clientArgs,type);
+				ReflectionLauncher.launch(classpath, clientArgs, type);
 				close();
 			}
 			catch (MalformedURLException ex)
@@ -506,6 +548,195 @@ public class Launcher
 
 	}
 
+	private static void update(Bootstrap bootstrap, OptionSet options, String[] args)
+	{
+		if (OS.getOs() != OS.OSType.Windows)
+		{
+			return;
+		}
+
+		ProcessHandle current = ProcessHandle.current();
+		if (current.info().command().isEmpty())
+		{
+			log.debug("Running process has no command");
+			return;
+		}
+
+		String installLocation;
+
+		try
+		{
+			installLocation = regQueryString("Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\RuneLite Launcher_is1", "InstallLocation");
+		}
+		catch (UnsatisfiedLinkError | RuntimeException ex)
+		{
+			log.debug("Skipping update check, error querying install location", ex);
+			return;
+		}
+
+		Path path = Paths.get(current.info().command().get());
+		if (!path.startsWith(installLocation)
+			|| !path.getFileName().toString().equals(LAUNCHER_EXECUTABLE_NAME))
+		{
+			log.debug("Skipping update check due to not running from installer, command is {}",
+				current.info().command().get());
+			return;
+		}
+
+		log.debug("Running from installer");
+
+		var updates = bootstrap.getUpdates();
+		if (updates == null)
+		{
+			return;
+		}
+
+		final var os = System.getProperty("os.name");
+		final var arch = System.getProperty("os.arch");
+		final var launcherVersion = LauncherProperties.getVersion();
+		if (os == null || arch == null || launcherVersion == null)
+		{
+			return;
+		}
+
+		Update newestUpdate = null;
+		for (var update : updates)
+		{
+			var updateOs = OS.parseOs(update.getOs());
+			if ((updateOs == OS.OSType.Other ? update.getOs().equals(os) : updateOs == OS.getOs()) &&
+				(update.getArch() == null || arch.equals(update.getArch())) &&
+				compareVersion(update.getVersion(), launcherVersion) > 0 &&
+				(update.getMinimumVersion() == null || compareVersion(launcherVersion, update.getMinimumVersion()) >= 0) &&
+				(newestUpdate == null || compareVersion(update.getVersion(), newestUpdate.getVersion()) > 0))
+			{
+				log.info("Update {} is available", update.getVersion());
+				newestUpdate = update;
+			}
+		}
+
+		if (newestUpdate == null)
+		{
+			return;
+		}
+
+		final boolean noupdate = options.has("noupdate");
+		if (noupdate)
+		{
+			log.info("Skipping update {} due to noupdate being set", newestUpdate.getVersion());
+			return;
+		}
+
+		if (System.getenv("RUNELITE_UPGRADE") != null)
+		{
+			log.info("Skipping update {} due to launching from an upgrade", newestUpdate.getVersion());
+			return;
+		}
+
+		var settings = loadSettings();
+		var hours = 1 << Math.min(9, settings.lastUpdateAttemptNum); // 512 hours = ~21 days
+		if (newestUpdate.getHash().equals(settings.lastUpdateHash)
+			&& Instant.ofEpochMilli(settings.lastUpdateAttemptTime).isAfter(Instant.now().minus(hours, ChronoUnit.HOURS)))
+		{
+			log.info("Previous upgrade attempt to {} was at {} (backoff: {} hours), skipping", newestUpdate.getVersion(),
+				// logback logs are in local time, so use that to match it
+				LocalTime.from(Instant.ofEpochMilli(settings.lastUpdateAttemptTime).atZone(ZoneId.systemDefault())),
+				hours);
+			return;
+		}
+
+		// the installer kills running RuneLite processes, so check that there are no others running
+		List<ProcessHandle> allProcesses = ProcessHandle.allProcesses().collect(Collectors.toList());
+		for (ProcessHandle ph : allProcesses)
+		{
+			if (ph.pid() == current.pid())
+			{
+				continue;
+			}
+
+			if (ph.info().command().equals(current.info().command()))
+			{
+				log.info("Skipping update {} due to {} process {}", newestUpdate.getVersion(), LAUNCHER_EXECUTABLE_NAME, ph);
+				return;
+			}
+		}
+
+		// check if rollout allows this update
+		if (newestUpdate.getRollout() > 0. && installRollout() > newestUpdate.getRollout())
+		{
+			log.info("Skipping update {} due to rollout", newestUpdate.getVersion());
+			return;
+		}
+
+		// from here and below the update will be attempted. update settings early so a failed
+		// download counts as an attempt.
+		settings.lastUpdateAttemptTime = System.currentTimeMillis();
+		settings.lastUpdateHash = newestUpdate.getHash();
+		settings.lastUpdateAttemptNum++;
+		saveSettings(settings);
+
+		try
+		{
+			log.info("Downloading launcher {} from {}", newestUpdate.getVersion(), newestUpdate.getUrl());
+
+			var file = Files.createTempFile("rlupdate", "exe");
+			try (OutputStream fout = Files.newOutputStream(file))
+			{
+				final var name = newestUpdate.getName();
+				final var size = newestUpdate.getSize();
+				try
+				{
+					download(newestUpdate.getUrl(), newestUpdate.getHash(), (completed) ->
+							SplashScreen.stage(.07, 1., null, name, completed, size, true),
+						fout);
+				}
+				catch (VerificationException e)
+				{
+					log.error("unable to verify update", e);
+					file.toFile().delete();
+					return;
+				}
+			}
+
+			log.info("Launching installer version {}", newestUpdate.getVersion());
+
+			var pb = new ProcessBuilder(
+				file.toFile().getAbsolutePath(),
+				"/SILENT"
+			);
+			var env = pb.environment();
+
+			var argStr = new StringBuilder();
+			var escaper = Escapers.builder()
+				.addEscape('"', "\\\"")
+				.build();
+			for (var arg : args)
+			{
+				if (argStr.length() > 0)
+				{
+					argStr.append(' ');
+				}
+				if (arg.contains(" ") || arg.contains("\""))
+				{
+					argStr.append('"').append(escaper.escape(arg)).append('"');
+				}
+				else
+				{
+					argStr.append(arg);
+				}
+			}
+
+			env.put("RUNELITE_UPGRADE", "1");
+			env.put("RUNELITE_UPGRADE_PARAMS", argStr.toString());
+			pb.start();
+
+			System.exit(0);
+		}
+		catch (IOException e)
+		{
+			log.error("io error performing upgrade", e);
+		}
+	}
+
 	private static void setJvmParams(final Map<String, String> params)
 	{
 		for (Map.Entry<String, String> entry : params.entrySet())
@@ -517,18 +748,24 @@ public class Launcher
 	private static Bootstrap getBootstrap(SelectedType type) throws IOException, CertificateException, NoSuchAlgorithmException, InvalidKeyException, SignatureException, VerificationException
 	{
 		URL u = null;
-		if(type == SelectedType.NORMAL) {
+		if (type == SelectedType.NORMAL)
+		{
 			u = new URL(LauncherProperties.getBootstrap());
-		} else if (type == SelectedType.BETA) {
+		}
+		else if (type == SelectedType.BETA)
+		{
 			u = new URL(LauncherProperties.getBootstrapBeta());
 		}
 
 
 		URL signatureUrl = null;
 
-		if(type == SelectedType.NORMAL) {
+		if (type == SelectedType.NORMAL)
+		{
 			signatureUrl = new URL(LauncherProperties.getBootstrapSig());
-		} else if (type == SelectedType.BETA) {
+		}
+		else if (type == SelectedType.BETA)
+		{
 			signatureUrl = new URL(LauncherProperties.getBootstrapSigBeta());
 		}
 
@@ -540,7 +777,7 @@ public class Launcher
 		signatureConn.setRequestProperty("User-Agent", USER_AGENT);
 
 		try (InputStream i = conn.getInputStream();
-			InputStream signatureIn = signatureConn.getInputStream())
+			 InputStream signatureIn = signatureConn.getInputStream())
 		{
 			byte[] bytes = ByteStreams.toByteArray(i);
 			byte[] signature = ByteStreams.toByteArray(signatureIn);
@@ -598,9 +835,12 @@ public class Launcher
 
 		File saveLocation = new File("");
 
-		if(type == SelectedType.NORMAL) {
+		if (type == SelectedType.NORMAL)
+		{
 			saveLocation = REPO_DIR;
-		} else if (type == SelectedType.BETA) {
+		}
+		else if (type == SelectedType.BETA)
+		{
 			saveLocation = REPO_DIR_BETA;
 		}
 
@@ -676,14 +916,14 @@ public class Launcher
 					ByteArrayOutputStream out = new ByteArrayOutputStream();
 					final int totalBytes = totalDownloadBytes;
 					download(diff.getPath(), diff.getHash(), (completed) ->
-						stage(START_PROGRESS, .80, null, diff.getName(), total + completed, totalBytes, true),
+							stage(START_PROGRESS, .80, null, diff.getName(), total + completed, totalBytes, true),
 						out);
 					downloaded += diff.getSize();
 
 					File old = new File(saveLocation, diff.getFrom());
 					HashCode hash;
 					try (InputStream patchStream = new GZIPInputStream(new ByteArrayInputStream(out.toByteArray()));
-						HashingOutputStream fout = new HashingOutputStream(Hashing.sha256(), Files.newOutputStream(dest.toPath())))
+						 HashingOutputStream fout = new HashingOutputStream(Hashing.sha256(), Files.newOutputStream(dest.toPath())))
 					{
 						new FileByFileV1DeltaApplier().applyDelta(old, patchStream, fout);
 						hash = fout.hash();
@@ -714,7 +954,7 @@ public class Launcher
 			{
 				final int totalBytes = totalDownloadBytes;
 				download(artifact.getPath(), artifact.getHash(), (completed) ->
-					stage(START_PROGRESS, .80, null, artifact.getName(), total + completed, totalBytes, true),
+						stage(START_PROGRESS, .80, null, artifact.getName(), total + completed, totalBytes, true),
 					fout);
 				downloaded += artifact.getSize();
 			}
@@ -729,9 +969,12 @@ public class Launcher
 	{
 		File saveLocation = new File("");
 
-		if(type == SelectedType.NORMAL) {
+		if (type == SelectedType.NORMAL)
+		{
 			saveLocation = REPO_DIR;
-		} else if (type == SelectedType.BETA) {
+		}
+		else if (type == SelectedType.BETA)
+		{
 			saveLocation = REPO_DIR_BETA;
 		}
 
@@ -776,9 +1019,12 @@ public class Launcher
 	{
 		File saveLocation = new File("");
 
-		if(type == SelectedType.NORMAL) {
+		if (type == SelectedType.NORMAL)
+		{
 			saveLocation = REPO_DIR;
-		} else if (type == SelectedType.BETA) {
+		}
+		else if (type == SelectedType.BETA)
+		{
 			saveLocation = REPO_DIR_BETA;
 		}
 
@@ -944,7 +1190,8 @@ public class Launcher
 		{
 			bootstrap = getBootstrap(type);
 		}
-		catch (IOException | VerificationException | CertificateException | SignatureException | InvalidKeyException | NoSuchAlgorithmException ex)
+		catch (IOException | VerificationException | CertificateException | SignatureException | InvalidKeyException |
+			   NoSuchAlgorithmException ex)
 		{
 			log.error("error fetching bootstrap", ex);
 			return;
@@ -958,28 +1205,65 @@ public class Launcher
 
 	public static void stage(double startProgress, double endProgress,
 							 @Nullable String actionText, String subActionText,
-							 int done, int total, boolean mib) {
-		if (displayMulti) {
+							 int done, int total, boolean mib)
+	{
+		if (displayMulti)
+		{
 			SplashScreenBeta.stage(startProgress, endProgress, subActionText, done, total, mib);
-		} else {
+		}
+		else
+		{
 			SplashScreen.stage(startProgress, endProgress,
-			actionText, subActionText, done, total, mib);
+				actionText, subActionText, done, total, mib);
 		}
 	}
 
-	public static void stage(double overallProgress, @Nullable String actionText, String subActionText) {
-		if (displayMulti) {
-			SplashScreenBeta.stage(overallProgress,subActionText);
-		} else {
-			SplashScreen.stage(overallProgress,actionText,subActionText);
+	public static void stage(double overallProgress, @Nullable String actionText, String subActionText)
+	{
+		if (displayMulti)
+		{
+			SplashScreenBeta.stage(overallProgress, subActionText);
+		}
+		else
+		{
+			SplashScreen.stage(overallProgress, actionText, subActionText);
 		}
 	}
 
-	public static void close() {
-		if (displayMulti) {
+	public static void close()
+	{
+		if (displayMulti)
+		{
 			SplashScreenBeta.close();
-		} else {
+		}
+		else
+		{
 			SplashScreen.stop();
+		}
+	}
+
+	private static void initDll()
+	{
+		if (OS.getOs() != OS.OSType.Windows)
+		{
+			return;
+		}
+
+		String arch = System.getProperty("os.arch");
+		if (!"x86".equals(arch) && !"amd64".equals(arch))
+		{
+			log.debug("System architecture is not supported for launcher natives: {}", arch);
+			return;
+		}
+
+		try
+		{
+			System.loadLibrary("launcher_" + arch);
+			log.debug("Loaded launcher native launcher_{}", arch);
+		}
+		catch (Error ex)
+		{
+			log.debug("Error loading launcher native", ex);
 		}
 	}
 
@@ -1016,6 +1300,86 @@ public class Launcher
 			log.debug("Error setting dll blacklist", ex);
 		}
 	}
+
+	private static double installRollout()
+	{
+		try (var reader = new BufferedReader(new FileReader("install_id.txt")))
+		{
+			var line = reader.readLine();
+			if (line != null)
+			{
+				line = line.trim();
+				var i = Integer.parseInt(line);
+				log.debug("Loaded install id {}", i);
+				return (double) i / (double) Integer.MAX_VALUE;
+			}
+		}
+		catch (IOException | NumberFormatException ex)
+		{
+			log.warn("unable to get install rollout", ex);
+		}
+		return Math.random();
+	}
+
+	@Nonnull
+	private static LauncherSettings loadSettings()
+	{
+		var settingsFile = new File(LAUNCHER_SETTINGS).getAbsoluteFile();
+		try (var in = new InputStreamReader(new FileInputStream(settingsFile)))
+		{
+			var settings = new Gson()
+				.fromJson(in, LauncherSettings.class);
+			return MoreObjects.firstNonNull(settings, new LauncherSettings());
+		}
+		catch (FileNotFoundException ex)
+		{
+			log.debug("unable to load settings, file does not exist");
+			return new LauncherSettings();
+		}
+		catch (IOException | JsonParseException e)
+		{
+			log.warn("unable to load settings", e);
+			return new LauncherSettings();
+		}
+	}
+
+	private static void saveSettings(LauncherSettings settings)
+	{
+		var settingsFile = new File(LAUNCHER_SETTINGS).getAbsoluteFile();
+
+		try
+		{
+			File tmpFile = File.createTempFile(LAUNCHER_SETTINGS, "json");
+			var gson = new Gson();
+
+			try (FileOutputStream fout = new FileOutputStream(tmpFile);
+				 FileChannel channel = fout.getChannel();
+				 PrintWriter writer = new PrintWriter(fout))
+			{
+				channel.lock();
+				writer.write(gson.toJson(settings));
+				channel.force(true);
+				// FileChannel.close() frees the lock
+			}
+
+			try
+			{
+				Files.move(tmpFile.toPath(), settingsFile.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+			}
+			catch (AtomicMoveNotSupportedException ex)
+			{
+				log.debug("atomic move not supported", ex);
+				Files.move(tmpFile.toPath(), settingsFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+			}
+		}
+		catch (IOException e)
+		{
+			log.warn("error saving launcher settings!", e);
+			settingsFile.delete();
+		}
+	}
+
+	private static native String regQueryString(String subKey, String value);
 
 	private static native void setBlacklistedDlls(String[] dlls);
 }

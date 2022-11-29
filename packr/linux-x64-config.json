@@ -1,9 +1,9 @@
 {
     "platform": "linux64",
     "jdk": "linux-jdk",
-    "executable": "Glacyte",
+    "executable": "Gacyte",
     "classpath": [
-        "target/Glacyte.jar"
+        "target/Gacyte.jar"
     ],
     "mainclass": "net.runelite.launcher.Launcher",
     "vmargs": [
@@ -12,7 +12,7 @@
        "-Xss2m",
        "-XX:CompileThreshold=1500"
     ],
-    "output": "native-linux-x86_64/Glacyte.AppDir/",
+    "output": "native-linux-x86_64/Gacyte.AppDir/",
     "resources": [
       "target/filtered-resources/app.desktop",
       "appimage/app.png"

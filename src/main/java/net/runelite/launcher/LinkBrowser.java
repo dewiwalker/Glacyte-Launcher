@@ -86,6 +86,7 @@ public class LinkBrowser
 			return false;
 		}
 	}
+
 	private static boolean shouldAttemptXdg = OS.getOs() == OS.OSType.Linux;
 
 	/**
@@ -94,8 +95,7 @@ public class LinkBrowser
 	 */
 	public static void browse(final String url)
 	{
-		new Thread(() ->
-		{
+		new Thread(() -> {
 			if (Strings.isNullOrEmpty(url))
 			{
 				log.warn("LinkBrowser.browse() called with invalid input");
@@ -121,12 +121,12 @@ public class LinkBrowser
 
 	/**
 	 * Tries to open a directory in the OS native file manager.
+	 *
 	 * @param directory directory to open
 	 */
 	public static void open(final String directory)
 	{
-		new Thread(() ->
-		{
+		new Thread(() -> {
 			if (Strings.isNullOrEmpty(directory))
 			{
 				log.warn("LinkBrowser.open() called with invalid input");
@@ -233,14 +233,13 @@ public class LinkBrowser
 
 	/**
 	 * Open swing message box with specified message and copy data to clipboard
+	 *
 	 * @param message message to show
 	 */
 	private static void showMessageBox(final String message, final String data)
 	{
-		SwingUtilities.invokeLater(() ->
-		{
-			final int result = JOptionPane.showConfirmDialog(null, message, "Message",
-					JOptionPane.OK_CANCEL_OPTION);
+		SwingUtilities.invokeLater(() -> {
+			final int result = JOptionPane.showConfirmDialog(null, message, "Message", JOptionPane.OK_CANCEL_OPTION);
 
 			if (result == JOptionPane.OK_OPTION)
 			{

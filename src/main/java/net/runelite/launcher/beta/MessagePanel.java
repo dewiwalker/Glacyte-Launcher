@@ -26,178 +26,178 @@ import lombok.Getter;
 @Getter
 class MessagePanel extends JPanel
 {
-    private static final Dimension PANEL_SIZE = new Dimension(SplashScreenBeta.FRAME_SIZE.width - InfoPanel.PANEL_SIZE.width, SplashScreenBeta.FRAME_SIZE.height);
-    private static final Dimension BAR_SIZE = new Dimension(PANEL_SIZE.width, 30);
-    private static final int MESSAGE_AREA_PADDING = 15;
+	private static final Dimension PANEL_SIZE = new Dimension(SplashScreenBeta.FRAME_SIZE.width - InfoPanel.PANEL_SIZE.width, SplashScreenBeta.FRAME_SIZE.height);
+	private static final Dimension BAR_SIZE = new Dimension(PANEL_SIZE.width, 30);
+	private static final int MESSAGE_AREA_PADDING = 15;
 
-    private final JLabel titleLabel = new JLabel("Welcome to Glacyte");
-    private final JLabel messageArea;
-    private final JLabel bootstrapChannel;
-    private final JLabel barLabel = new JLabel("Doing something important");
-    private final JProgressBar bar = new JProgressBar(0, 100);
+	private final JLabel titleLabel = new JLabel("Welcome to Glacyte");
+	private final JLabel messageArea;
+	private final JLabel bootstrapChannel;
+	private final JLabel barLabel = new JLabel("Doing something important");
+	private final JProgressBar bar = new JProgressBar(0, 100);
 
-    @Getter(AccessLevel.NONE)
-    private final JScrollPane scrollPane;
-    private final JPanel buttonPanel;
-    private final JButton stableBtn;
-    private final JButton nightlyBtn;
+	@Getter(AccessLevel.NONE)
+	private final JScrollPane scrollPane;
+	private final JPanel buttonPanel;
+	private final JButton stableBtn;
+	private final JButton nightlyBtn;
 
-    MessagePanel()
-    {
-        this.setPreferredSize(PANEL_SIZE);
-        this.setLayout(new GridBagLayout());
-        this.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+	MessagePanel()
+	{
+		this.setPreferredSize(PANEL_SIZE);
+		this.setLayout(new GridBagLayout());
+		this.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 
-        final GridBagConstraints c = new GridBagConstraints();
-        c.fill = GridBagConstraints.HORIZONTAL;
-        c.anchor = GridBagConstraints.NORTH;
-        c.weightx = 1;
-        c.gridx = 0;
-        c.gridy = 0;
-        c.ipady = 25;
+		final GridBagConstraints c = new GridBagConstraints();
+		c.fill = GridBagConstraints.HORIZONTAL;
+		c.anchor = GridBagConstraints.NORTH;
+		c.weightx = 1;
+		c.gridx = 0;
+		c.gridy = 0;
+		c.ipady = 25;
 
-        // main message
-        titleLabel.setFont(new Font(FontManager.getRunescapeFont().getName(), FontManager.getRunescapeFont().getStyle(), 32));
-        titleLabel.setHorizontalAlignment(JLabel.CENTER);
-        titleLabel.setForeground(Color.WHITE);
-        this.add(titleLabel, c);
-        c.gridy++;
+		// main message
+		titleLabel.setFont(new Font(FontManager.getRunescapeFont().getName(), FontManager.getRunescapeFont().getStyle(), 32));
+		titleLabel.setHorizontalAlignment(JLabel.CENTER);
+		titleLabel.setForeground(Color.WHITE);
+		this.add(titleLabel, c);
+		c.gridy++;
 
-        // alternate message action
-        messageArea = messageArea("Open-source client for Old School RuneScape with more functionality and fewer restrictions.");
+		// alternate message action
+		messageArea = messageArea("Open-source client for Old School RuneScape with more functionality and fewer restrictions.");
 
-        scrollPane = new JScrollPane(messageArea, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        scrollPane.setBorder(new EmptyBorder(0, 0, 0, 0));
-        scrollPane.getVerticalScrollBar().setUI(new CustomScrollBarUI());
-        final JViewport scrollPaneViewport = scrollPane.getViewport();
-        scrollPaneViewport.setForeground(Color.WHITE);
-        scrollPaneViewport.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        scrollPaneViewport.setOpaque(true);
+		scrollPane = new JScrollPane(messageArea, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+		scrollPane.setBorder(new EmptyBorder(0, 0, 0, 0));
+		scrollPane.getVerticalScrollBar().setUI(new CustomScrollBarUI());
+		final JViewport scrollPaneViewport = scrollPane.getViewport();
+		scrollPaneViewport.setForeground(Color.WHITE);
+		scrollPaneViewport.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		scrollPaneViewport.setOpaque(true);
 
-        c.weighty = 1;
-        c.fill = 1;
-        this.add(scrollPane, c);
-        c.gridy++;
+		c.weighty = 1;
+		c.fill = 1;
+		this.add(scrollPane, c);
+		c.gridy++;
 
-        bootstrapChannel = messageArea("Do you want to make use of the Normal or the beta client? The Beta client may be unstable or have bugs");
+		bootstrapChannel = messageArea("Do you want to make use of the Normal or the beta client? The Beta client may be unstable or have bugs");
 
-        this.add(bootstrapChannel, c);
-        c.gridy++;
+		this.add(bootstrapChannel, c);
+		c.gridy++;
 
-        buttonPanel = new JPanel();
-        buttonPanel.setLayout(new GridLayout(1, 2, 10, 10));
-        buttonPanel.setBorder(new EmptyBorder(50, 10, 50, 10));
-        buttonPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        buttonPanel.setOpaque(true);
+		buttonPanel = new JPanel();
+		buttonPanel.setLayout(new GridLayout(1, 2, 10, 10));
+		buttonPanel.setBorder(new EmptyBorder(50, 10, 50, 10));
+		buttonPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		buttonPanel.setOpaque(true);
 
-        stableBtn = addButton("Normal", "The Normal , it will use the most stable build.");
-        buttonPanel.add(stableBtn);
+		stableBtn = addButton("Normal", "The Normal , it will use the most stable build.");
+		buttonPanel.add(stableBtn);
 
-        nightlyBtn = addButton("Beta", "The Beta may not be stable due to experimental features.");
-        buttonPanel.add(nightlyBtn);
+		nightlyBtn = addButton("Beta", "The Beta may not be stable due to experimental features.");
+		buttonPanel.add(nightlyBtn);
 
-        bootstrapChannel.setVisible(false);
-        buttonPanel.setVisible(false);
+		bootstrapChannel.setVisible(false);
+		buttonPanel.setVisible(false);
 
-        this.add(buttonPanel, c);
-        c.gridy++;
+		this.add(buttonPanel, c);
+		c.gridy++;
 
-        c.weighty = 0;
-        c.weightx = 1;
-        c.ipady = 5;
+		c.weighty = 0;
+		c.weightx = 1;
+		c.ipady = 5;
 
-        barLabel.setFont(FontManager.getRunescapeFont());
-        barLabel.setHorizontalAlignment(JLabel.CENTER);
-        barLabel.setForeground(Color.WHITE);
-        barLabel.setBorder(new EmptyBorder(5, 0, 5, 0));
-        this.add(barLabel, c);
-        c.gridy++;
-        bar.setFont(FontManager.getRunescapeFont());
-        bar.setBackground(ColorScheme.BRAND_BLUE_TRANSPARENT.darker());
-        bar.setForeground(ColorScheme.BRAND_BLUE);
-        bar.setMinimumSize(BAR_SIZE);
-        bar.setMaximumSize(BAR_SIZE);
-        bar.setBorder(new MatteBorder(0, 0, 0, 0, Color.LIGHT_GRAY));
-        bar.setUI(new BasicProgressBarUI()
-        {
-            protected Color getSelectionBackground()
-            {
-                return ColorScheme.DARKER_GRAY_COLOR;
-            }
+		barLabel.setFont(FontManager.getRunescapeFont());
+		barLabel.setHorizontalAlignment(JLabel.CENTER);
+		barLabel.setForeground(Color.WHITE);
+		barLabel.setBorder(new EmptyBorder(5, 0, 5, 0));
+		this.add(barLabel, c);
+		c.gridy++;
+		bar.setFont(FontManager.getRunescapeFont());
+		bar.setBackground(ColorScheme.BRAND_BLUE_TRANSPARENT.darker());
+		bar.setForeground(ColorScheme.BRAND_BLUE);
+		bar.setMinimumSize(BAR_SIZE);
+		bar.setMaximumSize(BAR_SIZE);
+		bar.setBorder(new MatteBorder(0, 0, 0, 0, Color.LIGHT_GRAY));
+		bar.setUI(new BasicProgressBarUI()
+		{
+			protected Color getSelectionBackground()
+			{
+				return ColorScheme.DARKER_GRAY_COLOR;
+			}
 
-            protected Color getSelectionForeground()
-            {
-                return ColorScheme.DARKER_GRAY_COLOR;
-            }
-        });
-        bar.setFont(FontManager.getRunescapeFont());
-        bar.setVisible(true);
-        this.add(bar, c);
-        c.gridy++;
-    }
+			protected Color getSelectionForeground()
+			{
+				return ColorScheme.DARKER_GRAY_COLOR;
+			}
+		});
+		bar.setFont(FontManager.getRunescapeFont());
+		bar.setVisible(true);
+		this.add(bar, c);
+		c.gridy++;
+	}
 
-    private JLabel messageArea(String message)
-    {
-        JLabel messageArea = new JLabel("<html><div style='text-align:center;'>" + message + "</div></html>")
-        {
-            @Override
-            public Dimension getPreferredSize()
-            {
-                final Dimension results = super.getPreferredSize();
-                results.width = PANEL_SIZE.width - MESSAGE_AREA_PADDING;
-                return results;
-            }
-        };
-        messageArea.setFont(new Font(FontManager.getRunescapeFont().getName(), FontManager.getRunescapeSmallFont().getStyle(), 16));
-        messageArea.setForeground(Color.WHITE);
-        messageArea.setBorder(new EmptyBorder(0, MESSAGE_AREA_PADDING, 0, MESSAGE_AREA_PADDING));
+	private JLabel messageArea(String message)
+	{
+		JLabel messageArea = new JLabel("<html><div style='text-align:center;'>" + message + "</div></html>")
+		{
+			@Override
+			public Dimension getPreferredSize()
+			{
+				final Dimension results = super.getPreferredSize();
+				results.width = PANEL_SIZE.width - MESSAGE_AREA_PADDING;
+				return results;
+			}
+		};
+		messageArea.setFont(new Font(FontManager.getRunescapeFont().getName(), FontManager.getRunescapeSmallFont().getStyle(), 16));
+		messageArea.setForeground(Color.WHITE);
+		messageArea.setBorder(new EmptyBorder(0, MESSAGE_AREA_PADDING, 0, MESSAGE_AREA_PADDING));
 
-        return messageArea;
-    }
+		return messageArea;
+	}
 
-    void setMessageContent(String content)
-    {
-        if (content != null && !content.startsWith("<html"))
-        {
-            content = "<html><div style='text-align:center;'>" + content + "</div></html>";
-        }
+	void setMessageContent(String content)
+	{
+		if (content != null && !content.startsWith("<html"))
+		{
+			content = "<html><div style='text-align:center;'>" + content + "</div></html>";
+		}
 
-        messageArea.setText(content);
-        messageArea.revalidate();
-        messageArea.repaint();
-    }
+		messageArea.setText(content);
+		messageArea.revalidate();
+		messageArea.repaint();
+	}
 
-    void setMessageTitle(String text)
-    {
-        titleLabel.setText(text);
-        titleLabel.revalidate();
-        titleLabel.repaint();
-    }
+	void setMessageTitle(String text)
+	{
+		titleLabel.setText(text);
+		titleLabel.revalidate();
+		titleLabel.repaint();
+	}
 
-    private JButton addButton(String action, String tooltip)
-    {
-        JButton btn = new JButton(action);
-        btn.setToolTipText(tooltip);
-        btn.setPreferredSize(new Dimension(40, 40));
-        btn.setFont(new Font(FontManager.getRunescapeFont().getName(), FontManager.getRunescapeSmallFont().getStyle(), 16));
-        btn.setForeground(Color.WHITE);
-        btn.setOpaque(false);
-        btn.setContentAreaFilled(false);
-        btn.setFocusPainted(false);
-        btn.setBorder(BorderFactory.createLineBorder(ColorScheme.DARK_GRAY_COLOR));
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+	private JButton addButton(String action, String tooltip)
+	{
+		JButton btn = new JButton(action);
+		btn.setToolTipText(tooltip);
+		btn.setPreferredSize(new Dimension(40, 40));
+		btn.setFont(new Font(FontManager.getRunescapeFont().getName(), FontManager.getRunescapeSmallFont().getStyle(), 16));
+		btn.setForeground(Color.WHITE);
+		btn.setOpaque(false);
+		btn.setContentAreaFilled(false);
+		btn.setFocusPainted(false);
+		btn.setBorder(BorderFactory.createLineBorder(ColorScheme.DARK_GRAY_COLOR));
+		btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
-        return btn;
-    }
+		return btn;
+	}
 
-    List<JButton> addButtons()
-    {
-        bootstrapChannel.setVisible(true);
-        buttonPanel.setVisible(true);
+	List<JButton> addButtons()
+	{
+		bootstrapChannel.setVisible(true);
+		buttonPanel.setVisible(true);
 
-        titleLabel.revalidate();
-        titleLabel.repaint();
+		titleLabel.revalidate();
+		titleLabel.repaint();
 
-        return Arrays.asList(stableBtn, nightlyBtn);
-    }
+		return Arrays.asList(stableBtn, nightlyBtn);
+	}
 }

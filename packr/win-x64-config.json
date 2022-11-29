@@ -1,9 +1,9 @@
 {
   "platform": "windows64",
   "jdk": "win64-jdk",
-  "executable": "Glacyte",
+  "executable": "Gacyte",
   "classpath": [
-    "target/Glacyte.jar"
+    "target/Gacyte.jar"
   ],
   "mainclass": "net.runelite.launcher.Launcher",
   "vmargs": [

@@ -38,6 +38,8 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
+import com.google.gson.JsonIOException;
+import com.google.gson.JsonSyntaxException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -66,9 +68,17 @@ class PackrConfig
 		{
 			config = gson.fromJson(new InputStreamReader(fin), Map.class);
 		}
-		catch (IOException e)
+		catch (IOException | JsonIOException | JsonSyntaxException e)
 		{
-			log.warn("error updating packr vm args!", e);
+			log.warn("error deserializing packr vm args!", e);
+			return;
+		}
+
+		if (config == null)
+		{
+			// this can't happen when run from the launcher, because an invalid packr config would prevent the launcher itself
+			// from starting. But could happen if the jar launcher was run separately.
+			log.warn("packr config is null!");
 			return;
 		}
 

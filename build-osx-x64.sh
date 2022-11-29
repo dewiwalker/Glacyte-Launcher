@@ -41,27 +41,27 @@ echo "f51577b005a51331b822a18122ce08fca58cf6fee91f071d5a16354815bbe1e3  packr_${
 java -jar packr_${PACKR_VERSION}.jar \
     packr/macos-x64-config.json
 
-cp target/filtered-resources/Info.plist native-osx/Glacyte.app/Contents
+cp target/filtered-resources/Info.plist native-osx/Gacyte.app/Contents
 
-echo Setting world execute permissions on Glacyte
-pushd native-osx/Glacyte.app
-chmod g+x,o+x Contents/MacOS/Glacyte
+echo Setting world execute permissions on Gacyte
+pushd native-osx/Gacyte.app
+chmod g+x,o+x Contents/MacOS/Gacyte
 popd
 
-codesign -f -s "${SIGNING_IDENTITY}" --entitlements osx/signing.entitlements --options runtime native-osx/Glacyte.app || true
+codesign -f -s "${SIGNING_IDENTITY}" --entitlements osx/signing.entitlements --options runtime native-osx/Gacyte.app || true
 
 # create-dmg exits with an error code due to no code signing, but is still okay
 # note we use Adam-/create-dmg as upstream does not support UDBZ
-create-dmg --format UDBZ native-osx/Glacyte.app native-osx/ || true
+create-dmg --format UDBZ native-osx/Gacyte.app native-osx/ || true
 
-mv native-osx/Glacyte\ *.dmg native-osx/Glacyte-x64.dmg
+mv native-osx/Gacyte\ *.dmg native-osx/Gacyte-x64.dmg
 
-if ! hdiutil imageinfo native-osx/Glacyte-x64.dmg | grep -q "Format: UDBZ" ; then
+if ! hdiutil imageinfo native-osx/Gacyte-x64.dmg | grep -q "Format: UDBZ" ; then
     echo "Format of resulting dmg was not UDBZ, make sure your create-dmg has support for --format"
     exit 1
 fi
 
 # Notarize app
-if xcrun notarytool submit native-osx/Glacyte-x64.dmg --wait --keychain-profile "AC_PASSWORD" ; then
-    xcrun stapler staple native-osx/Glacyte-x64.dmg
+if xcrun notarytool submit native-osx/Gacyte-x64.dmg --wait --keychain-profile "AC_PASSWORD" ; then
+    xcrun stapler staple native-osx/Gacyte-x64.dmg
 fi
