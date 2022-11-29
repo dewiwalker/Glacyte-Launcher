@@ -152,7 +152,7 @@
 	</dependencies>
 
 	<build>
-		<finalName>Glacyte</finalName>
+		<finalName>glacyte</finalName>
 
 		<resources>
 			<resource>
