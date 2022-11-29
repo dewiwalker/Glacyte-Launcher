@@ -43,21 +43,21 @@ echo "f51577b005a51331b822a18122ce08fca58cf6fee91f071d5a16354815bbe1e3  packr_${
 java -jar packr_${PACKR_VERSION}.jar \
 	packr/macos-aarch64-config.json
 
-cp target/filtered-resources/Info.plist native-osx-aarch64/Gacyte.app/Contents
+cp target/filtered-resources/Info.plist native-osx-aarch64/Glacyte.app/Contents
 
-echo Setting world execute permissions on Gacyte
-pushd native-osx-aarch64/Gacyte.app
-chmod g+x,o+x Contents/MacOS/Gacyte
+echo Setting world execute permissions on Glacyte
+pushd native-osx-aarch64/Glacyte.app
+chmod g+x,o+x Contents/MacOS/Glacyte
 popd
 
-codesign -f -s "${SIGNING_IDENTITY}" --entitlements osx/signing.entitlements --options runtime native-osx-aarch64/Gacyte.app || true
+codesign -f -s "${SIGNING_IDENTITY}" --entitlements osx/signing.entitlements --options runtime native-osx-aarch64/Glacyte.app || true
 
 # create-dmg exits with an error code due to no code signing, but is still okay
-create-dmg native-osx-aarch64/Gacyte.app native-osx-aarch64/ || true
+create-dmg native-osx-aarch64/Glacyte.app native-osx-aarch64/ || true
 
-mv native-osx-aarch64/Gacyte\ *.dmg native-osx-aarch64/Gacyte-aarch64.dmg
+mv native-osx-aarch64/Glacyte\ *.dmg native-osx-aarch64/Glacyte-aarch64.dmg
 
 # Notarize app
-if xcrun notarytool submit native-osx-aarch64/Gacyte-aarch64.dmg --wait --keychain-profile "AC_PASSWORD" ; then
-    xcrun stapler staple native-osx-aarch64/Gacyte-aarch64.dmg
+if xcrun notarytool submit native-osx-aarch64/Glacyte-aarch64.dmg --wait --keychain-profile "AC_PASSWORD" ; then
+    xcrun stapler staple native-osx-aarch64/Glacyte-aarch64.dmg
 fi
